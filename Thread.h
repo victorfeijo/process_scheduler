@@ -1,6 +1,6 @@
 /*
  * File:   Thread.h
- * Author: <preencher>
+ * Author: José Victor Feijó de Araujo
  *
  * Created on September 27, 2015, 10:30 AM
  */

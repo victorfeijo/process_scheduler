@@ -21,11 +21,15 @@ struct Traits {
     static const bool debugged = true;
 };
 
+template<> struct Traits<Process> {
+    static constexpr double timeBetweenCresations = 1000.0; // time units
+};
+
 template<> struct Traits<Debug> { // CHANGE THE DEBUG LEVEL HERE SETTING THE LEVELS YOU WANT TO SHOW
     static const bool error = true;
     static const bool warning = true;
     static const bool trace = true; //false;
-    static const bool info = true; //false;
+    static const bool info = false;
     static const bool fine = false;
 };
 
@@ -34,15 +38,11 @@ template<> struct Traits<CPU> {
     static constexpr double timer_interrupt_period = 100.0; // time units
 };
 
-template<> struct Traits<Process> {
-    static constexpr double timeBetweenCresations = 1000.0; // time units
-};
-
 template<> struct Traits<Thread> {
-    static constexpr double minCpuBurst = 150.0; // time units
-    static constexpr double maxCpuBurst = 150.0; // time units
-    static constexpr int minThreadsPerProcess = 3;
-    static constexpr int maxThreadsPerProcess = 3;
+    static constexpr double minCpuBurst = 100.0; // time units
+    static constexpr double maxCpuBurst = 100.0; // time units
+    static constexpr int minThreadsPerProcess = 1;
+    static constexpr int maxThreadsPerProcess = 5;
 };
 
 template<> struct Traits<Model> {
@@ -62,4 +62,3 @@ template<> struct Traits<Scheduler> {
 
 
 #endif	/* TRAITS_H */
-

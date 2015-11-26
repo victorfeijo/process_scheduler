@@ -1,6 +1,6 @@
 /*
  * File:   Thread.cpp
- * Author: <preencher>
+ * Author: José Victor Feijó de Araujo
  *
  * Created on September 27, 2015, 10:30 AM
  */
@@ -10,7 +10,6 @@
 #include "System.h"
 #include "Simulator.h"
 #include "CPU.h"
-
 Thread* Thread::_running;
 
 Thread::Thread(Process* task, Thread::State state) {
@@ -19,6 +18,9 @@ Thread::Thread(Process* task, Thread::State state) {
     this->_state = state;
     // INSERT YOUR CODE HERE
     // ...
+    //Atualizando prioridade ao criar apartir dos dados do Traits, criando a fila de threads de espera
+    this->_accountInfo._priority = (Traits<Thread>::minCpuBurst + Traits<Thread>::maxCpuBurst) / 2;
+    this->_queue = new Queue<Thread*>();
 }
 
 Thread::Thread(const Thread& orig) {
@@ -29,7 +31,6 @@ Thread::~Thread() {
 
 Thread* Thread::running() {
     return _running;
-    //return System::scheduler()->choosen();
 }
 
 Process* Thread::getProcess() {
@@ -40,13 +41,13 @@ int Thread::getPriority() const {
     return _accountInfo._priority;
 }
 
-void Thread::sleep(Queue * q) {
+void Thread::sleep(Queue<Thread*> * q) {
     Debug::cout(Debug::Level::trace, "Thread::sleep(" + std::to_string(reinterpret_cast<unsigned long> (q)) + ")");
     // INSERT YOUR CODE HERE
     // ...
 }
 
-void Thread::wakeup(Queue * q) {
+void Thread::wakeup(Queue<Thread*> * q) {
     Debug::cout(Debug::Level::trace, "Thread::wakeup(" + std::to_string(reinterpret_cast<unsigned long> (q)) + ")");
     // INSERT YOUR CODE HERE
     // ...
@@ -62,6 +63,12 @@ void Thread::yield() {
     Debug::cout(Debug::Level::trace, "Thread::yield()");
     // INSERT YOUR CODE HERE
     // ...
+    //Apenas coloca a running para READY e poe devolta na fila
+    Thread* running = Thread::running();
+    running->_state = READY;
+    System::scheduler()->insert(running);
+    Thread* next = System::scheduler()->choose();
+    Thread::dispatch(running, next);
 }
 
 /**
@@ -79,6 +86,14 @@ int Thread::join() {
     Debug::cout(Debug::Level::trace, "Thread::join()");
     // INSERT YOUR CODE HERE
     // ...
+    //Se o estado da this não for FINISHING, coloca a running em espera e adiciona ela na fila da thrads da this
+    if (this->_state != FINISHING) {
+        Thread* running = Thread::running();
+        running->_state = WAITING;
+        this->_queue->push_back(running);
+        Thread* next = System::scheduler()->choose();
+        Thread::dispatch(running, next);
+    }
 }
 
 /**
@@ -93,46 +108,64 @@ void Thread::exit(int status) {
     Debug::cout(Debug::Level::trace, "Thread::exit(" + std::to_string(status) + ")");
     // INSERT YOUR CODE HERE
     // ...
+    Thread* running = Thread::running();
+    running->_state = FINISHING;
+    //Enquanto a lista de espera da running não estiver vazia, coloca cada thread para o estado pronto
+    while (!(running->_queue->empty())) {
+        Thread* thread = running->_queue->back();
+        running->_queue->pop_front();
+        thread->_state = READY;
+        System::scheduler()->insert(thread);
+    }
+    Thread* next = System::scheduler()->choose();
+    Thread::dispatch(running, next);
 }
 
 /**
  * Threads são despachadas, ou seja, têm seus contextos trocados, quando se invoca a chamada 
  * static void Thread::dispatch(Thread* previous, Thread* next), que precisa ser implementada. A implementaçao desse  método 
- * deve inicialmente atualizar o atributo _running,  verificar se a próxima thread (next) é nula ou não. 
- * Se for, nada precisa ser feito (isso só ocorre quando  a fila de prontos é vazia e não há thread para ser escalonada). 
- * Se não for, então a thread a ser executada precisa ser  colocada no estado RUNNING e retirada da fila de prontos. 
- * Então deve ser verificado se a thread anterior  (previous) é diferente de nula e também se é diferente da próxma thread. 
- * Se não for, então basta restaurar o contexto da  próxima thread, invocando static void CPU::restore_context(Thread* next). 
- * Se for, então é preciso verificar se a thread  anterior estava no estado RUNNING e caso sim, então a thread anterior deve 
- * passar para o estado READY. Após esse teste  deve-se fazer a troca de contexto entre as threads, invocando o método 
- * static void CPU::switch_context(Thread* previous, Thread* next).
+ * deve inicialmente verificar se a próxima thread (next) é nula ou não. Se for, nada precisa ser feito (isso só ocorre quando 
+ * a fila de prontos é vazia e não há thread para ser escalonada). Se não for, então deve ser verificado se a thread anterior 
+ * (previous) é diferente de nula e também se é diferente da próxma thread. Se não for, então basta restaurar o contexto da 
+ * próxima thread, invocando static void CPU::restore_context(Thread* next). Se for, então é preciso verificar se a thread 
+ * anterior estava no estado RUNNING e caso sim, então a thread anterior deve passar para o estado READY. Após esse teste 
+ * deve-se fazer a troca de contexto entre as threads, invocando o método static void CPU::switch_context(Thread* previous, Thread* next).
  * **/
 void Thread::dispatch(Thread* previous, Thread* next) {
-     Debug::cout(Debug::Level::trace, "Thread::dispatch(" + std::to_string(reinterpret_cast<unsigned long> (previous)) + "," + std::to_string(reinterpret_cast<unsigned long> (next)) + ")");
-    // INSERT YOUR CODE HERE
-    // ...
-    // o atributo _running deve ser atualizado
+  
+Debug::cout(Debug::Level::trace, "Thread::dispatch(" + std::to_string(reinterpret_cast<unsigned long>
+(previous)) + "," + std::to_string(reinterpret_cast<unsigned long> (next)) + ")");
+
     _running = next;
-    // verificar se a próxima thread (next) é nula ou não. Se for, nada precisa ser feito
     if (next != nullptr) {
-        // a thread a ser executada precisa ser colocada no estado RUNNING
-        next->_state = Thread::State::RUNNING;
-        // e retirada da fila de prontos
         System::scheduler()->remove(next);
-        // deve ser verificado se a thread anterior (previous) é diferente de nula e também se é diferente da próxma thread
         if ((previous != nullptr) && (previous != next)) {
-            //  verificar se a thread anterior estava no estado RUNNING
-            if (previous->_state == Thread::State::RUNNING) {
-                // a thread anterior deve passar para o estado READY
+            if(previous->_state == Thread::State::RUNNING) {
+                //Seta a thread anterior para ready, calcula o cpu time, atualiza o burst e seta a prioridade de acordo com o Burst
                 previous->_state = Thread::State::READY;
+                previous->_accountInfo._cpuTime = Simulator::getInstance()->getTnow(); - previous->_accountInfo._arrivalTime;
+                previous->_accountInfo._cpuBurstTime = (previous->_accountInfo._cpuBurstTime + previous->_accountInfo._cpuTime) / 2;
+                previous->_accountInfo._priority = previous->_accountInfo._cpuBurstTime;
+                //Escalonador insere a anterior na fila de READY
+                System::scheduler()->insert(previous);
+                CPU::switch_context(previous, next);
+                //REAL THREAD RUNNING??
+               // Debug::cout(Debug::Level::trace,"Thread Running now (" + std::to_string(reinterpret_cast<unsigned long>
+               // (_running)) + ")");
             }
-            // fazer a troca de contexto entre as threads
-            CPU::switch_context(previous, next);
         } else {
-            // Se não for, então basta restaurar o contexto da próxima thread
+            //Necessário atualizar os dados de prioridade caso a previous seja igual a next
+            if(previous == next) {
+                previous->_accountInfo._cpuTime = Simulator::getInstance()->getTnow(); - previous->_accountInfo._arrivalTime;
+                previous->_accountInfo._cpuBurstTime = (previous->_accountInfo._cpuBurstTime + previous->_accountInfo._cpuTime) / 2;
+                previous->_accountInfo._priority = previous->_accountInfo._cpuBurstTime;
+            }
             CPU::restore_context(next);
         }
+        next->_accountInfo._arrivalTime = Simulator::getInstance()->getTnow();;
+        next->_state = Thread::State::RUNNING;
     }
+    
 }
 
 /**
@@ -147,4 +180,11 @@ Thread* Thread::thread_create(Process* parent) {
     Debug::cout(Debug::Level::trace, "Thread::create(" + std::to_string(reinterpret_cast<unsigned long> (parent)) + ")");
     // INSERT YOUR CODE HERE
     // ...
+    Thread* thread = new Thread(parent, Thread::State::READY);
+    Thread::getThreadsList()->push_back(thread);
+    System::scheduler()->insert(thread);
+    if (System::scheduler()->preemptive) {
+        Thread* next = System::scheduler()->choose();
+        Thread::dispatch(_running, next);
+    }
 }

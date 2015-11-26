@@ -1,6 +1,6 @@
 /*
  * File:   Process.h
- * Author: <preencher>
+ * Author: José Victor Feijó de Araujo
  *
  * Created on August 31, 2015, 7:49 AM
  */
@@ -19,8 +19,6 @@
 class Process {
     friend class Thread;
     friend class ModuleInvoke_ProcessExec; // for simulation purposes only
-    friend class Tester; // for simulation purposes only
-
 
 
     // structs for grouping process' attributes
@@ -79,6 +77,7 @@ public: // USER DEFINED
 
 private: // USER DEFINED
     // INSERT YOUR CODE HERE
+    unsigned int getSize(std::list<MemorySegment*>* segments);
 };
 
 #endif	/* PROCESS_H */

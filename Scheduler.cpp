@@ -1,6 +1,6 @@
 /*
  * File:   Scheduler.cpp
- * Author: <preencher>
+ * Author: José Victor Feijó de Araujo
  *
  * Created on September 27, 2015, 11:19 AM
  */
@@ -28,13 +28,22 @@ Thread* Scheduler::remove(Thread* thread) {
 /*
  * Threads podem solicitar ao escalonador para escolher outra thread para executar, invocando o método
  * Thread* Scheduler::choose(), que deve ser implementado. A implementação desse método deve verificar se há alguma
- * thread na fila de threads prontas para executar. Se houver, deve retornar o primeiro elemento dessa fila, sem o excluir
+ * thread na fila de threads prontas para executar. Se houver, deve retornar o primeiro elemento dessa fila, excluindo-o
  * da fila. Se a fila estiver vazia, deve retornar nulo.
  */
 Thread* Scheduler::choose() {
     Debug::cout(Debug::Level::trace, "Scheduler::choose()");
     // INSERT YOUR CODE HERE
     // ...
+    if (this->_readyQueue->empty()) {
+        return nullptr;
+    } else {
+        Thread* next = this->_readyQueue->top();
+        //Não retirar mais a thread escolhida da fila de prontos  no método choose() quando a thread a escolhida.
+        //Isso depende da implemetação de vocês, mas deve ser simplesmente comantar a lnha que retira  a cabça da lista, como:
+        //this->_readyQueue->pop();
+        return next;
+    }
 }
 
 /*
@@ -50,6 +59,13 @@ void Scheduler::reschedule() {
     if (!this->_readyQueue->empty()) {
         // INSERT YOUR CODE HERE
         // ...
-
+        //Criando uma lista nova e inserindo em ordem todos os elementos, substituindo a fila velha
+        Scheduling_Queue* newQueue = new Scheduling_Queue();
+        while(!(this->_readyQueue->empty())) {
+            newQueue->insert(this->_readyQueue->top());
+            this->_readyQueue->pop();
+        }
+        delete this->_readyQueue;
+        this->_readyQueue = newQueue;
     }
 }

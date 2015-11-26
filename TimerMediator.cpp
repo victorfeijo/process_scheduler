@@ -11,6 +11,8 @@
 #include "System.h"
 #include "Traits.h"
 #include "Thread.h"
+#include <iostream>
+
 
 /**
  * O sistema simulado possui ainda um timer, que gera interrupções periodicamente. O timer foi inicialmente configurado
@@ -26,5 +28,17 @@ void TimerMediator::interrupt_handler() {
     if (System::scheduler()->preemptive) {
         // INSERT YOUR CODE HERE
         // ...
+        Thread* running = Thread::running();
+        //Preempta a thread quando o time slice foi atingido, caso ela ja tenha expirado seu cpu time, uma nova thread roda
+        //REAL THREAD RUNNING??
+        //Debug::cout(Debug::Level::trace,"Thread Running now (" + std::to_string(reinterpret_cast<unsigned long>
+               // (Thread::running())) + ")");
+        if (running != nullptr) {
+            double cpuTime = Simulator::getInstance()->getTnow() - running->_accountInfo._arrivalTime;
+            if (cpuTime > Traits<Scheduler>::timeSlice) {
+                Thread* next = System::scheduler()->choose();
+                Thread::dispatch(running, next);
+            }
+        }
     }
 }

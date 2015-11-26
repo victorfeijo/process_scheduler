@@ -1,6 +1,6 @@
 /*
  * File:   Queue.h
- * Author: <preencher>
+ * Author: José Victor Feijó de Araujo
  *
  * Created on September 27, 2015, 11:28 AM
  */
@@ -19,9 +19,9 @@
 template <class T>
 class Queue : public std::list<T> {
 public: // constructors
-    Queue();
-    Queue(const Queue& orig);
-    virtual ~Queue();
+    Queue() : std::list<T>() {}
+    Queue(const Queue& orig) : std::list<T>(orig) {}
+    virtual ~Queue() {}
 private: // user defined
     // INSERT YOUR CODE HERE
     // ...

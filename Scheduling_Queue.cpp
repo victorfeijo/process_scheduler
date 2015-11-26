@@ -40,6 +40,20 @@ Thread* Scheduling_Queue::top() {
 }
 
 void Scheduling_Queue::insert(Thread* t) {
-    // INSERT YOUR CODE HERE
-    // ...
+    
+    //se a fila tiver vazia, coloca na primeira posição
+    if (_queue->empty()) {
+        _queue->push_front(t);
+    } else {
+        //Adiciona na "fila" ordenadamente por critério de prioridade, prioridade decrescente para crescente.
+        std::list<Thread*>::iterator iterator;
+        for (iterator = _queue->begin(); iterator != _queue->end(); iterator++) {
+            Thread* actualThread = *iterator;
+            if (t->getPriority() < actualThread->getPriority()) {
+                _queue->insert(iterator, t);
+                return;
+            }
+        }
+        _queue->push_back(t);
+    }
 }
